@@ -1,12 +1,3 @@
-import OpenAI from 'openai';
-
-// DeepSeek AI Service for Social Media Writeup
-const deepseek = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
-  apiKey: import.meta.env.VITE_DEEPSEEK_API_KEY,
-  dangerouslyAllowBrowser: true
-});
-
 // Gemini AI Service for Product Analysis
 class GeminiService {
   private apiKey: string;
@@ -65,9 +56,31 @@ class GeminiService {
     
     return this.generateContent(prompt);
   }
+
+  async generateSocialWriteup(
+    platform: string,
+    wordLimit: number,
+    tone: string,
+    brief: string
+  ): Promise<string> {
+    const prompt = `You are an expert social media copywriter specializing in ${platform} content. 
+    Create engaging, platform-optimized content that drives engagement and conversions for small businesses.
+    
+    Write a ${tone} ${platform} post about: "${brief}". 
+    Requirements:
+    - Keep it under ${wordLimit} words
+    - Include relevant hashtags for ${platform}
+    - Add a clear call-to-action
+    - Make it engaging and shareable
+    - Focus on business value and customer benefits
+    - Use appropriate emojis where suitable
+    - Follow ${platform} best practices for formatting and style`;
+    
+    return this.generateContent(prompt);
+  }
 }
 
-// Social Media Writeup Service using DeepSeek
+// Social Media Writeup Service using Gemini
 export async function generateSocialWriteup(
   platform: string,
   wordLimit: number,
@@ -75,30 +88,9 @@ export async function generateSocialWriteup(
   brief: string
 ): Promise<string> {
   try {
-    const systemPrompt = `You are an expert social media copywriter specializing in ${platform} content. 
-    Create engaging, platform-optimized content that drives engagement and conversions for small businesses.`;
-
-    const userPrompt = `Write a ${tone} ${platform} post about: "${brief}". 
-    Requirements:
-    - Keep it under ${wordLimit} words
-    - Include relevant hashtags for ${platform}
-    - Add a clear call-to-action
-    - Make it engaging and shareable
-    - Focus on business value and customer benefits`;
-
-    const completion = await deepseek.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      model: "deepseek-chat",
-      temperature: 0.7,
-      max_tokens: Math.min(wordLimit * 2, 500)
-    });
-
-    return completion.choices[0]?.message?.content?.trim() || 'Failed to generate content';
+    return geminiService.generateSocialWriteup(platform, wordLimit, tone, brief);
   } catch (error) {
-    console.error('DeepSeek API error:', error);
+    console.error('Gemini API error:', error);
     throw new Error('Failed to generate social media content. Please try again.');
   }
 }

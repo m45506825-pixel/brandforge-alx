@@ -81,7 +81,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onCreateNew, onOpenProject
 
 		try {
 			setGenerating(true);
-			// Use DeepSeek AI for social media writeup
+			// Use Gemini AI for social media writeup
 			const generatedText = await generateSocialWriteup(platform, wordLimit, tone, brief);
 			setResult(generatedText);
 		} catch (err: any) {
