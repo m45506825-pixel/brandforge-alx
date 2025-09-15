@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { PlusCircle, FolderOpen, Sparkles, Copy, Send, X } from 'lucide-react';
 import { Project } from '../types';
+import { generateSocialWriteup } from '../services/aiService';
 
 interface DashboardProps {
 	onCreateNew: () => void;
@@ -80,25 +81,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onCreateNew, onOpenProject
 
 		try {
 			setGenerating(true);
-			// Call backend endpoint (secrets stay server-side)
-			const res = await fetch('/api/social-writeup', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ platform, wordLimit, tone, brief }),
-			});
-			if (!res.ok) {
-				const text = await res.text();
-				throw new Error(`Backend error ${res.status}: ${text}`);
-			}
-			const contentType = res.headers.get('content-type') || '';
-			if (contentType.includes('application/json')) {
-				const data = await res.json();
-				const text = data?.text ?? data?.result ?? '';
-				setResult(String(text).trim());
-			} else {
-				const text = await res.text();
-				setResult(text.trim());
-			}
+			// Use DeepSeek AI for social media writeup
+			const generatedText = await generateSocialWriteup(platform, wordLimit, tone, brief);
+			setResult(generatedText);
 		} catch (err: any) {
 			setErrorMsg(err?.message || 'Failed to generate writeup. Check console for details.');
 			// eslint-disable-next-line no-console

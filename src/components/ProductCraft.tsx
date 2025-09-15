@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Move, Scissors, Palette, Type, Package, Sparkles, Undo, Redo, Save, Camera, Layers, Zap, Eye, RotateCcw } from 'lucide-react';
+import { Upload, Move, Scissors, Palette, Type, Package, Sparkles, Undo, Redo, Save, Camera, Layers, Zap, Eye, RotateCcw, Brain, Lightbulb } from 'lucide-react';
 import { EditingTool } from '../types';
+import { analyzeProductImage, getProductSuggestions, suggestBackgrounds } from '../services/aiService';
 
 interface ProductCraftProps {
   onBack: () => void;
@@ -10,6 +11,11 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
   const [selectedTool, setSelectedTool] = useState<string>('product');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [selectedBackground, setSelectedBackground] = useState<string>('clean-white');
+  const [productDescription, setProductDescription] = useState<string>('');
+  const [aiAnalysis, setAiAnalysis] = useState<string>('');
+  const [aiSuggestions, setAiSuggestions] = useState<string>('');
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [customBackgrounds, setCustomBackgrounds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const tools: EditingTool[] = [
@@ -19,7 +25,9 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
     { id: 'enhance', name: 'Product Enhance', icon: 'Sparkles', description: 'AI-powered product enhancement', category: 'ai' },
     { id: 'crop', name: 'Smart Crop', icon: 'Scissors', description: 'Intelligent product cropping', category: 'basic' },
     { id: 'colors', name: 'Color Match', icon: 'Palette', description: 'Brand color consistency', category: 'ai' },
-    { id: 'text', name: 'Product Labels', icon: 'Type', description: 'Add product information', category: 'basic' }
+    { id: 'text', name: 'Product Labels', icon: 'Type', description: 'Add product information', category: 'basic' },
+    { id: 'ai-analyze', name: 'AI Analysis', icon: 'Brain', description: 'Get AI insights about your product', category: 'ai' },
+    { id: 'ai-suggestions', name: 'AI Suggestions', icon: 'Lightbulb', description: 'Get AI photography tips', category: 'ai' }
   ];
 
   const backgrounds = [
@@ -33,6 +41,45 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
     { id: 'wood-natural', name: 'Natural Wood', preview: '#deb887', category: 'texture' }
   ];
 
+  const handleAnalyzeProduct = async () => {
+    if (!productDescription.trim()) {
+      alert('Please describe your product first');
+      return;
+    }
+    
+    setIsAnalyzing(true);
+    try {
+      const analysis = await analyzeProductImage(productDescription);
+      setAiAnalysis(analysis);
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      setAiAnalysis('Failed to analyze product. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleGetSuggestions = async () => {
+    if (!productDescription.trim()) {
+      alert('Please describe your product first');
+      return;
+    }
+    
+    setIsAnalyzing(true);
+    try {
+      const suggestions = await getProductSuggestions(productDescription);
+      setAiSuggestions(suggestions);
+      
+      // Also get background suggestions
+      const bgSuggestions = await suggestBackgrounds(productDescription);
+      setCustomBackgrounds(bgSuggestions);
+    } catch (error) {
+      console.error('Suggestions failed:', error);
+      setAiSuggestions('Failed to get suggestions. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -46,7 +93,7 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
 
   const getToolIcon = (iconName: string) => {
     const iconMap: { [key: string]: React.ComponentType<any> } = {
-      Package, Layers, Zap, Sparkles, Scissors, Palette, Type, Move
+      Package, Layers, Zap, Sparkles, Scissors, Palette, Type, Move, Brain, Lightbulb
     };
     return iconMap[iconName] || Package;
   };
@@ -196,6 +243,23 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
       <div className="w-80 bg-white border-l border-gray-200 p-4">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Properties</h3>
         
+        {/* Product Description Input */}
+        <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+          <label className="block text-sm font-medium text-purple-800 mb-2">
+            Describe Your Product
+          </label>
+          <textarea
+            value={productDescription}
+            onChange={(e) => setProductDescription(e.target.value)}
+            placeholder="e.g., Handmade ceramic coffee mug with blue glaze finish"
+            className="w-full p-2 border border-purple-300 rounded text-sm resize-none"
+            rows={3}
+          />
+          <p className="text-xs text-purple-600 mt-1">
+            Help AI understand your product for better suggestions
+          </p>
+        </div>
+        
         {selectedTool === 'product' && (
           <div className="space-y-4">
             <button className="w-full bg-purple-50 border border-purple-200 text-purple-700 p-3 rounded-lg hover:bg-purple-100 transition-colors">
@@ -221,6 +285,18 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
         {selectedTool === 'background' && (
           <div className="space-y-4">
             <h4 className="font-medium text-gray-700">Background Styles</h4>
+            {customBackgrounds.length > 0 && (
+              <div className="mb-4">
+                <h5 className="text-sm font-medium text-purple-700 mb-2">AI Suggested Backgrounds</h5>
+                <div className="space-y-1">
+                  {customBackgrounds.map((bg, index) => (
+                    <div key={index} className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                      {bg}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               {backgrounds.map((bg) => (
                 <button
@@ -321,6 +397,42 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
               <button className="p-2 border border-gray-300 rounded text-sm hover:bg-gray-50 bg-purple-50 border-purple-300">Center</button>
               <button className="p-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Right</button>
             </div>
+          </div>
+        )}
+        
+        {selectedTool === 'ai-analyze' && (
+          <div className="space-y-4">
+            <button 
+              onClick={handleAnalyzeProduct}
+              disabled={isAnalyzing}
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white p-3 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors disabled:opacity-50"
+            >
+              {isAnalyzing ? 'Analyzing...' : 'Analyze Product with AI'}
+            </button>
+            {aiAnalysis && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <h5 className="font-medium text-blue-800 mb-2">AI Analysis</h5>
+                <div className="text-sm text-blue-700 whitespace-pre-wrap">{aiAnalysis}</div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {selectedTool === 'ai-suggestions' && (
+          <div className="space-y-4">
+            <button 
+              onClick={handleGetSuggestions}
+              disabled={isAnalyzing}
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white p-3 rounded-lg hover:from-green-600 hover:to-blue-600 transition-colors disabled:opacity-50"
+            >
+              {isAnalyzing ? 'Getting Suggestions...' : 'Get AI Photography Tips'}
+            </button>
+            {aiSuggestions && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <h5 className="font-medium text-green-800 mb-2">AI Suggestions</h5>
+                <div className="text-sm text-green-700 whitespace-pre-wrap">{aiSuggestions}</div>
+              </div>
+            )}
           </div>
         )}
       </div>
