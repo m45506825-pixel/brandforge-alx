@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Move, Scissors, Palette, Type, Package, Sparkles, Undo, Redo, Save, Camera, Layers, Zap, Eye, Brain, Lightbulb } from 'lucide-react';
+import { Move, Scissors, Palette, Type, Package, Sparkles, Undo, Redo, Save, Camera, Layers, Zap, Eye, Brain, Lightbulb, Wand2, Eraser } from 'lucide-react';
 import { EditingTool } from '../types';
 import { analyzeProductImage, getProductSuggestions, suggestBackgrounds } from '../services/aiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, removeBackground, enhanceProductImage } from '../services/imageEditingService';
 
 interface ProductCraftProps {
   onBack: () => void;
@@ -16,7 +17,13 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
   const [aiSuggestions, setAiSuggestions] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [customBackgrounds, setCustomBackgrounds] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [editPrompt, setEditPrompt] = useState<string>('');
+  const [filterPrompt, setFilterPrompt] = useState<string>('');
+  const [adjustmentPrompt, setAdjustmentPrompt] = useState<string>('');
+  const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const [status, setStatus] = useState<string>('');
 
   const tools: EditingTool[] = [
@@ -28,7 +35,11 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
     { id: 'colors', name: 'Color Match', icon: 'Palette', description: 'Brand color consistency', category: 'ai' },
     { id: 'text', name: 'Product Labels', icon: 'Type', description: 'Add product information', category: 'basic' },
     { id: 'ai-analyze', name: 'AI Analysis', icon: 'Brain', description: 'Get AI insights about your product', category: 'ai' },
-    { id: 'ai-suggestions', name: 'AI Suggestions', icon: 'Lightbulb', description: 'Get AI photography tips', category: 'ai' }
+    { id: 'ai-suggestions', name: 'AI Suggestions', icon: 'Lightbulb', description: 'Get AI photography tips', category: 'ai' },
+    { id: 'ai-edit', name: 'AI Edit', icon: 'Wand2', description: 'AI-powered localized editing', category: 'ai' },
+    { id: 'ai-filter', name: 'AI Filter', icon: 'Sparkles', description: 'Apply AI-generated filters', category: 'ai' },
+    { id: 'ai-adjust', name: 'AI Adjust', icon: 'Zap', description: 'Global AI adjustments', category: 'ai' },
+    { id: 'ai-remove-bg', name: 'Remove Background', icon: 'Eraser', description: 'AI background removal', category: 'ai' }
   ];
 
   const backgrounds = [
@@ -85,6 +96,142 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
       setIsAnalyzing(false);
     }
   };
+
+  const handleImageClick = (event: React.MouseEvent<HTMLImageElement>) => {
+    if (selectedTool !== 'ai-edit') return;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    // Convert to image coordinates
+    const imageElement = event.currentTarget;
+    const scaleX = imageElement.naturalWidth / imageElement.width;
+    const scaleY = imageElement.naturalHeight / imageElement.height;
+    
+    setClickPosition({
+      x: Math.round(x * scaleX),
+      y: Math.round(y * scaleY)
+    });
+    setStatus(`click-position-${x}-${y}`);
+  };
+
+  const handleAIEdit = async () => {
+    if (!uploadedImage || !editPrompt.trim() || !clickPosition) {
+      alert('Please upload an image, enter an edit prompt, and click on the image where you want to edit');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Convert data URL back to File
+      const response = await fetch(uploadedImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'product.jpg', { type: blob.type });
+      
+      const editedImageUrl = await generateEditedImage(file, editPrompt, clickPosition);
+      setUploadedImage(editedImageUrl);
+      setStatus('ai-edit-complete');
+    } catch (error) {
+      console.error('AI edit failed:', error);
+      setStatus('ai-edit-failed');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleAIFilter = async () => {
+    if (!uploadedImage || !filterPrompt.trim()) {
+      alert('Please upload an image and enter a filter description');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(uploadedImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'product.jpg', { type: blob.type });
+      
+      const filteredImageUrl = await generateFilteredImage(file, filterPrompt);
+      setUploadedImage(filteredImageUrl);
+      setStatus('ai-filter-complete');
+    } catch (error) {
+      console.error('AI filter failed:', error);
+      setStatus('ai-filter-failed');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleAIAdjust = async () => {
+    if (!uploadedImage || !adjustmentPrompt.trim()) {
+      alert('Please upload an image and enter an adjustment description');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(uploadedImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'product.jpg', { type: blob.type });
+      
+      const adjustedImageUrl = await generateAdjustedImage(file, adjustmentPrompt);
+      setUploadedImage(adjustedImageUrl);
+      setStatus('ai-adjust-complete');
+    } catch (error) {
+      console.error('AI adjustment failed:', error);
+      setStatus('ai-adjust-failed');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRemoveBackground = async () => {
+    if (!uploadedImage) {
+      alert('Please upload an image first');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(uploadedImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'product.jpg', { type: blob.type });
+      
+      const bgRemovedImageUrl = await removeBackground(file);
+      setUploadedImage(bgRemovedImageUrl);
+      setStatus('bg-remove-complete');
+    } catch (error) {
+      console.error('Background removal failed:', error);
+      setStatus('bg-remove-failed');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleEnhanceImage = async () => {
+    if (!uploadedImage) {
+      alert('Please upload an image first');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(uploadedImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'product.jpg', { type: blob.type });
+      
+      const enhancedImageUrl = await enhanceProductImage(file);
+      setUploadedImage(enhancedImageUrl);
+      setStatus('enhance-complete');
+    } catch (error) {
+      console.error('Image enhancement failed:', error);
+      setStatus('enhance-failed');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -98,7 +245,7 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
   };
 
   const getToolIcon = (iconName: string) => {
-    const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
+    const iconMap: { [key: string]: React.ComponentType<any> } = {
       Package, Layers, Zap, Sparkles, Scissors, Palette, Type, Move, Brain, Lightbulb
     };
     return iconMap[iconName] || Package;
@@ -244,16 +391,27 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
                 }}
               >
                 <img
+                  ref={imageRef}
                   src={uploadedImage}
                   alt="Product"
-                  className="max-w-full max-h-[500px] rounded-lg mx-auto"
+                  className={`max-w-full max-h-[500px] rounded-lg mx-auto ${
+                    selectedTool === 'ai-edit' ? 'cursor-crosshair' : ''
+                  }`}
                   style={{ filter: selectedTool === 'enhance' ? 'contrast(1.1) brightness(1.05) saturate(1.1)' : 'none' }}
+                  onClick={handleImageClick}
                 />
               </div>
               <div className="absolute top-4 right-4 flex space-x-2">
-                <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
-                  AI Enhanced
-                </div>
+                {isProcessing && (
+                  <div className="bg-purple-600 text-white px-3 py-1 rounded text-sm animate-pulse">
+                    AI Processing...
+                  </div>
+                )}
+                {!isProcessing && (
+                  <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
+                    AI Enhanced
+                  </div>
+                )}
                 <button className="bg-purple-600 text-white p-2 rounded hover:bg-purple-700 transition-colors">
                   <Eye className="w-4 h-4" />
                 </button>
@@ -377,8 +535,12 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
         
         {selectedTool === 'enhance' && (
           <div className="space-y-4">
-            <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white p-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors">
-              AI Product Enhancement
+            <button 
+              onClick={handleEnhanceImage}
+              disabled={isProcessing}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white p-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors disabled:opacity-50"
+            >
+              {isProcessing ? 'Enhancing...' : 'AI Product Enhancement'}
             </button>
             <div className="space-y-3">
               <label className="flex items-center space-x-2">
@@ -462,6 +624,99 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
                 <div className="text-sm text-green-700 whitespace-pre-wrap">{aiSuggestions}</div>
               </div>
             )}
+          </div>
+        )}
+        
+        {selectedTool === 'ai-edit' && (
+          <div className="space-y-4">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <p className="text-purple-800 text-sm font-medium mb-2">AI Localized Editing</p>
+              <p className="text-purple-700 text-xs">Click on the image where you want to make changes, then describe what you want to edit.</p>
+            </div>
+            <textarea
+              value={editPrompt}
+              onChange={(e) => setEditPrompt(e.target.value)}
+              placeholder="e.g., Remove the scratch, change color to blue, add a reflection..."
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              rows={3}
+            />
+            {clickPosition && (
+              <div className="text-sm text-gray-600">
+                Edit position: ({clickPosition.x}, {clickPosition.y})
+              </div>
+            )}
+            <button 
+              onClick={handleAIEdit}
+              disabled={isProcessing || !editPrompt.trim() || !clickPosition}
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white p-3 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors disabled:opacity-50"
+            >
+              {isProcessing ? 'Editing...' : 'Apply AI Edit'}
+            </button>
+          </div>
+        )}
+        
+        {selectedTool === 'ai-filter' && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-blue-800 text-sm font-medium mb-2">AI Filter Application</p>
+              <p className="text-blue-700 text-xs">Describe the style or filter you want to apply to your product image.</p>
+            </div>
+            <textarea
+              value={filterPrompt}
+              onChange={(e) => setFilterPrompt(e.target.value)}
+              placeholder="e.g., Vintage film look, modern minimalist, warm golden hour, black and white..."
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={3}
+            />
+            <button 
+              onClick={handleAIFilter}
+              disabled={isProcessing || !filterPrompt.trim()}
+              className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white p-3 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-colors disabled:opacity-50"
+            >
+              {isProcessing ? 'Applying Filter...' : 'Apply AI Filter'}
+            </button>
+          </div>
+        )}
+        
+        {selectedTool === 'ai-adjust' && (
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-green-800 text-sm font-medium mb-2">AI Global Adjustments</p>
+              <p className="text-green-700 text-xs">Describe the overall adjustments you want to make to the entire image.</p>
+            </div>
+            <textarea
+              value={adjustmentPrompt}
+              onChange={(e) => setAdjustmentPrompt(e.target.value)}
+              placeholder="e.g., Make brighter, increase contrast, warmer colors, sharper details..."
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              rows={3}
+            />
+            <button 
+              onClick={handleAIAdjust}
+              disabled={isProcessing || !adjustmentPrompt.trim()}
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white p-3 rounded-lg hover:from-green-600 hover:to-blue-600 transition-colors disabled:opacity-50"
+            >
+              {isProcessing ? 'Adjusting...' : 'Apply AI Adjustment'}
+            </button>
+          </div>
+        )}
+        
+        {selectedTool === 'ai-remove-bg' && (
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-red-800 text-sm font-medium mb-2">AI Background Removal</p>
+              <p className="text-red-700 text-xs">Automatically remove the background from your product image using AI.</p>
+            </div>
+            <button 
+              onClick={handleRemoveBackground}
+              disabled={isProcessing}
+              className="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white p-3 rounded-lg hover:from-red-600 hover:to-pink-600 transition-colors disabled:opacity-50"
+            >
+              {isProcessing ? 'Removing Background...' : 'Remove Background with AI'}
+            </button>
+            <div className="text-xs text-gray-600">
+              This will create a transparent background perfect for e-commerce and social media.
+            </div>
           </div>
         )}
       </div>
