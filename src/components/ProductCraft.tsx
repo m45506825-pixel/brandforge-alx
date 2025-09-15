@@ -98,7 +98,7 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
   };
 
   const getToolIcon = (iconName: string) => {
-    const iconMap: { [key: string]: React.ComponentType<any> } = {
+    const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
       Package, Layers, Zap, Sparkles, Scissors, Palette, Type, Move, Brain, Lightbulb
     };
     return iconMap[iconName] || Package;

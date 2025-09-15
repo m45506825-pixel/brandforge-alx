@@ -84,9 +84,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onCreateNew, onOpenProject
 			// Use Gemini AI for social media writeup
 			const generatedText = await generateSocialWriteup(platform, wordLimit, tone, brief);
 			setResult(generatedText);
-		} catch (err: any) {
-			setErrorMsg(err?.message || 'Failed to generate writeup. Check console for details.');
-			// eslint-disable-next-line no-console
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Failed to generate writeup. Check console for details.';
+			setErrorMsg(message);
 			console.error(err);
 		} finally {
 			setGenerating(false);

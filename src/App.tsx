@@ -4,7 +4,6 @@ import { Dashboard } from './components/Dashboard';
 import { ProductCraft } from './components/ProductCraft';
 import { BrandingTools } from './components/BrandingTools';
 import { SocialMediaPosts } from './components/SocialMediaPosts';
-import { Project } from './types';
 
 type AppView = 'dashboard' | 'craft' | 'branding' | 'social';
 
@@ -17,7 +16,7 @@ function App() {
     setCurrentStep('craft');
   };
 
-  const handleOpenProject = (project: Project) => {
+  const handleOpenProject = () => {
     setCurrentView('craft');
     setCurrentStep('craft');
   };

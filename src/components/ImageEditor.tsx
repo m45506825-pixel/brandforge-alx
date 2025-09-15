@@ -32,7 +32,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ onBack }) => {
   };
 
   const getToolIcon = (iconName: string) => {
-    const iconMap: { [key: string]: React.ComponentType<any> } = {
+    const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
       Move, Scissors, ImageIcon, Palette, Type, Sparkles
     };
     return iconMap[iconName] || Move;
