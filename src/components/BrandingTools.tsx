@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Palette, Upload, Zap, Download, Eye } from 'lucide-react';
 
 interface BrandingToolsProps {
@@ -8,6 +8,8 @@ interface BrandingToolsProps {
 export const BrandingTools: React.FC<BrandingToolsProps> = ({ onBack }) => {
   const [brandColors, setBrandColors] = useState(['#3B82F6', '#10B981', '#F59E0B']);
   const [logo, setLogo] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const socialPlatforms = [
     { name: 'Instagram Post', size: '1080×1080', template: 'square' },
@@ -38,6 +40,7 @@ export const BrandingTools: React.FC<BrandingToolsProps> = ({ onBack }) => {
           <button
             onClick={onBack}
             className="text-blue-600 hover:text-blue-700 font-medium"
+            data-testid="bt-back"
           >
             ← Back to Editor
           </button>
@@ -60,13 +63,22 @@ export const BrandingTools: React.FC<BrandingToolsProps> = ({ onBack }) => {
                       const newColors = [...brandColors];
                       newColors[index] = e.target.value;
                       setBrandColors(newColors);
+                      setStatus(`color-${index}`);
                     }}
                     className="w-12 h-12 rounded-lg border border-gray-300 cursor-pointer"
+                    data-testid={`bt-color-${index}`}
                   />
                   <span className="font-mono text-sm text-gray-600">{color}</span>
                 </div>
               ))}
-              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+              <button
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                onClick={() => {
+                  setBrandColors([...brandColors, '#000000']);
+                  setStatus('color-added');
+                }}
+                data-testid="bt-add-color"
+              >
                 + Add Color
               </button>
             </div>
@@ -80,19 +92,43 @@ export const BrandingTools: React.FC<BrandingToolsProps> = ({ onBack }) => {
             {logo ? (
               <div className="text-center">
                 <img src={logo} alt="Brand logo" className="w-24 h-24 mx-auto mb-3 object-contain" />
-                <button className="text-blue-600 hover:text-blue-700 text-sm">
+                <button
+                  className="text-blue-600 hover:text-blue-700 text-sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="bt-replace-logo"
+                >
                   Replace Logo
                 </button>
               </div>
             ) : (
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                 <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <button className="text-blue-600 hover:text-blue-700 font-medium">
+                <button
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="bt-upload-logo"
+                >
                   Upload Logo
                 </button>
                 <p className="text-sm text-gray-500 mt-1">PNG, SVG recommended</p>
               </div>
             )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,.svg,.png,.jpg,.jpeg"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  setLogo(ev.target?.result as string);
+                  setStatus('logo-set');
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -126,6 +162,8 @@ export const BrandingTools: React.FC<BrandingToolsProps> = ({ onBack }) => {
                   <button
                     key={platform.template}
                     className="group bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors text-left"
+                    onClick={() => setStatus(`template-social-${platform.template}`)}
+                    data-testid={`bt-template-social-${platform.template}`}
                   >
                     <div className="aspect-square bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg mb-3 flex items-center justify-center">
                       <div className="w-8 h-8 bg-white rounded opacity-80"></div>
@@ -151,6 +189,8 @@ export const BrandingTools: React.FC<BrandingToolsProps> = ({ onBack }) => {
                   <button
                     key={material.template}
                     className="group bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors text-left"
+                    onClick={() => setStatus(`template-marketing-${material.template}`)}
+                    data-testid={`bt-template-marketing-${material.template}`}
                   >
                     <div className="aspect-[4/3] bg-gradient-to-br from-green-400 to-green-600 rounded-lg mb-3 flex items-center justify-center">
                       <div className="w-8 h-8 bg-white rounded opacity-80"></div>
@@ -168,14 +208,23 @@ export const BrandingTools: React.FC<BrandingToolsProps> = ({ onBack }) => {
 
         {/* Action Buttons */}
         <div className="mt-8 flex items-center justify-center space-x-4">
-          <button className="flex items-center space-x-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors">
+          <button
+            className="flex items-center space-x-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors"
+            onClick={() => setStatus('preview')}
+            data-testid="bt-preview-all"
+          >
             <Eye className="w-4 h-4" />
             <span>Preview All</span>
           </button>
-          <button className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+          <button
+            className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => setStatus('generate')}
+            data-testid="bt-generate-templates"
+          >
             <Download className="w-4 h-4" />
             <span>Generate Templates</span>
           </button>
+          <div className="text-xs text-gray-500" data-testid="bt-status">{status}</div>
         </div>
       </div>
     </div>

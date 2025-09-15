@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Instagram, Facebook, Linkedin, Twitter, Download, Eye, Copy, Calendar, Hash, AtSign } from 'lucide-react';
-import { SocialMediaPost } from '../types';
 
 interface SocialMediaPostsProps {
   onBack: () => void;
@@ -10,6 +9,7 @@ export const SocialMediaPosts: React.FC<SocialMediaPostsProps> = ({ onBack }) =>
   const [selectedPlatform, setSelectedPlatform] = useState<string>('instagram');
   const [selectedPostType, setSelectedPostType] = useState<string>('feed');
   const [caption, setCaption] = useState('');
+  const [status, setStatus] = useState<string>('');
 
   const platforms = [
     { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'from-pink-500 to-purple-600' },
@@ -68,6 +68,7 @@ export const SocialMediaPosts: React.FC<SocialMediaPostsProps> = ({ onBack }) =>
           <button
             onClick={onBack}
             className="text-purple-600 hover:text-purple-700 font-medium"
+            data-testid="sm-back"
           >
             ← Back to Brand Style
           </button>
@@ -87,12 +88,14 @@ export const SocialMediaPosts: React.FC<SocialMediaPostsProps> = ({ onBack }) =>
                       onClick={() => {
                         setSelectedPlatform(platform.id);
                         setSelectedPostType(postTypes[platform.id as keyof typeof postTypes][0].id);
+                        setStatus(`platform-${platform.id}`);
                       }}
                       className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
                         selectedPlatform === platform.id
                           ? 'bg-gradient-to-r ' + platform.color + ' text-white'
                           : 'hover:bg-gray-100 text-gray-700'
                       }`}
+                      data-testid={`sm-platform-${platform.id}`}
                     >
                       <Icon className="w-5 h-5" />
                       <span className="font-medium">{platform.name}</span>
@@ -109,12 +112,13 @@ export const SocialMediaPosts: React.FC<SocialMediaPostsProps> = ({ onBack }) =>
                 {currentPostTypes.map((postType) => (
                   <button
                     key={postType.id}
-                    onClick={() => setSelectedPostType(postType.id)}
+                    onClick={() => { setSelectedPostType(postType.id); setStatus(`posttype-${postType.id}`); }}
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
                       selectedPostType === postType.id
                         ? 'bg-purple-100 text-purple-700 border border-purple-200'
                         : 'hover:bg-gray-100 text-gray-700'
                     }`}
+                    data-testid={`sm-posttype-${postType.id}`}
                   >
                     <div className="font-medium">{postType.name}</div>
                     <div className="text-sm opacity-75">{postType.dimensions}</div>
@@ -134,10 +138,10 @@ export const SocialMediaPosts: React.FC<SocialMediaPostsProps> = ({ onBack }) =>
                     {currentPlatform?.name} {currentPostType?.name}
                   </h3>
                   <div className="flex items-center space-x-2">
-                    <button className="p-2 hover:bg-gray-100 rounded-lg">
+                    <button className="p-2 hover:bg-gray-100 rounded-lg" onClick={() => setStatus('preview')} data-testid="sm-preview">
                       <Eye className="w-4 h-4 text-gray-600" />
                     </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-lg">
+                    <button className="p-2 hover:bg-gray-100 rounded-lg" onClick={() => { navigator.clipboard?.writeText(caption); setStatus('copied'); }} data-testid="sm-copy">
                       <Copy className="w-4 h-4 text-gray-600" />
                     </button>
                   </div>
@@ -180,6 +184,8 @@ export const SocialMediaPosts: React.FC<SocialMediaPostsProps> = ({ onBack }) =>
                     <button
                       key={template.id}
                       className="aspect-square bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-purple-500 transition-all"
+                      onClick={() => setStatus(`template-${template.id}`)}
+                      data-testid={`sm-template-${template.id}`}
                     >
                       <img src={template.preview} alt={template.name} className="w-full h-full object-cover" />
                     </button>
@@ -196,9 +202,10 @@ export const SocialMediaPosts: React.FC<SocialMediaPostsProps> = ({ onBack }) =>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Caption & Copy</h3>
               <textarea
                 value={caption}
-                onChange={(e) => setCaption(e.target.value)}
+                onChange={(e) => { setCaption(e.target.value); setStatus('caption-edit'); }}
                 placeholder={`Write your ${currentPlatform?.name} caption...`}
                 className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                data-testid="sm-caption"
               />
               <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
                 <span>{caption.length} characters</span>
@@ -220,8 +227,9 @@ export const SocialMediaPosts: React.FC<SocialMediaPostsProps> = ({ onBack }) =>
                 {hashtagSuggestions.map((hashtag) => (
                   <button
                     key={hashtag}
-                    onClick={() => setCaption(prev => prev + ' ' + hashtag)}
+                    onClick={() => { setCaption(prev => prev + ' ' + hashtag); setStatus('hashtag-add'); }}
                     className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full hover:bg-purple-200 transition-colors"
+                    data-testid={`sm-hashtag-${hashtag}`}
                   >
                     {hashtag}
                   </button>
@@ -236,19 +244,20 @@ export const SocialMediaPosts: React.FC<SocialMediaPostsProps> = ({ onBack }) =>
                 Publishing
               </h3>
               <div className="space-y-3">
-                <button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white p-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors">
+                <button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white p-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors" onClick={() => setStatus('download')} data-testid="sm-download">
                   <Download className="w-4 h-4 inline mr-2" />
                   Download Post
                 </button>
-                <button className="w-full bg-gray-100 text-gray-700 p-3 rounded-lg hover:bg-gray-200 transition-colors">
+                <button className="w-full bg-gray-100 text-gray-700 p-3 rounded-lg hover:bg-gray-200 transition-colors" onClick={() => setStatus('schedule')} data-testid="sm-schedule">
                   <Calendar className="w-4 h-4 inline mr-2" />
                   Schedule Post
                 </button>
-                <button className="w-full bg-blue-100 text-blue-700 p-3 rounded-lg hover:bg-blue-200 transition-colors">
+                <button className="w-full bg-blue-100 text-blue-700 p-3 rounded-lg hover:bg-blue-200 transition-colors" onClick={() => setStatus('connect')} data-testid="sm-connect">
                   <AtSign className="w-4 h-4 inline mr-2" />
                   Connect Account
                 </button>
               </div>
+              <div className="mt-2 text-xs text-gray-500" data-testid="sm-status">{status}</div>
             </div>
 
             {/* Platform Tips */}

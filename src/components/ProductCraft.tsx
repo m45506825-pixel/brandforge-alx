@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Move, Scissors, Palette, Type, Package, Sparkles, Undo, Redo, Save, Camera, Layers, Zap, Eye, RotateCcw, Brain, Lightbulb } from 'lucide-react';
+import { Move, Scissors, Palette, Type, Package, Sparkles, Undo, Redo, Save, Camera, Layers, Zap, Eye, Brain, Lightbulb } from 'lucide-react';
 import { EditingTool } from '../types';
 import { analyzeProductImage, getProductSuggestions, suggestBackgrounds } from '../services/aiService';
 
@@ -17,6 +17,7 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [customBackgrounds, setCustomBackgrounds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<string>('');
 
   const tools: EditingTool[] = [
     { id: 'product', name: 'Product Focus', icon: 'Package', description: 'AI product detection and enhancement', category: 'product' },
@@ -51,9 +52,11 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
     try {
       const analysis = await analyzeProductImage(productDescription);
       setAiAnalysis(analysis);
+      setStatus('analyzed');
     } catch (error) {
       console.error('Analysis failed:', error);
       setAiAnalysis('Failed to analyze product. Please try again.');
+      setStatus('analyze-failed');
     } finally {
       setIsAnalyzing(false);
     }
@@ -73,9 +76,11 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
       // Also get background suggestions
       const bgSuggestions = await suggestBackgrounds(productDescription);
       setCustomBackgrounds(bgSuggestions);
+      setStatus('suggestions-ready');
     } catch (error) {
       console.error('Suggestions failed:', error);
       setAiSuggestions('Failed to get suggestions. Please try again.');
+      setStatus('suggestions-failed');
     } finally {
       setIsAnalyzing(false);
     }
@@ -86,6 +91,7 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setUploadedImage(e.target?.result as string);
+        setStatus('image-uploaded');
       };
       reader.readAsDataURL(file);
     }
@@ -106,6 +112,7 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
           <button
             onClick={onBack}
             className="text-purple-600 hover:text-purple-700 font-medium text-sm"
+            data-testid="pc-back"
           >
             ← Back to Dashboard
           </button>
@@ -119,12 +126,16 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
               return (
                 <button
                   key={tool.id}
-                  onClick={() => setSelectedTool(tool.id)}
+                  onClick={() => {
+                    setSelectedTool(tool.id);
+                    setStatus(`tool-${tool.id}`);
+                  }}
                   className={`w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-colors ${
                     selectedTool === tool.id
                       ? 'bg-purple-100 text-purple-700'
                       : 'hover:bg-gray-100 text-gray-700'
                   }`}
+                  data-testid={`pc-tool-${tool.id}`}
                 >
                   <Icon className="w-5 h-5" />
                   <div>
@@ -144,19 +155,32 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
 
         <div className="p-4 mt-auto border-t border-gray-200">
           <div className="flex items-center space-x-2 mb-4">
-            <button className="flex-1 flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors">
+            <button
+              className="flex-1 flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors"
+              onClick={() => setStatus('undo')}
+              data-testid="pc-undo"
+            >
               <Undo className="w-4 h-4" />
               <span>Undo</span>
             </button>
-            <button className="flex-1 flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors">
+            <button
+              className="flex-1 flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors"
+              onClick={() => setStatus('redo')}
+              data-testid="pc-redo"
+            >
               <Redo className="w-4 h-4" />
               <span>Redo</span>
             </button>
           </div>
-          <button className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors">
+          <button
+            className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors"
+            onClick={() => setStatus('save')}
+            data-testid="pc-save"
+          >
             <Save className="w-4 h-4" />
             <span>Save Product</span>
           </button>
+          <div className="mt-2 text-xs text-gray-500" data-testid="pc-status">{status}</div>
         </div>
       </div>
 
@@ -301,7 +325,7 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
               {backgrounds.map((bg) => (
                 <button
                   key={bg.id}
-                  onClick={() => setSelectedBackground(bg.id)}
+                  onClick={() => { setSelectedBackground(bg.id); setStatus('background-changed'); }}
                   className={`aspect-square rounded-lg border-2 transition-colors ${
                     selectedBackground === bg.id ? 'border-purple-500' : 'border-gray-200 hover:border-gray-300'
                   }`}
@@ -309,6 +333,7 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
                     background: bg.preview.startsWith('linear-gradient') ? bg.preview : bg.preview 
                   }}
                   title={bg.name}
+                  data-testid={`pc-bg-${bg.id}`}
                 >
                   {selectedBackground === bg.id && (
                     <div className="w-full h-full flex items-center justify-center">
@@ -318,7 +343,11 @@ export const ProductCraft: React.FC<ProductCraftProps> = ({ onBack }) => {
                 </button>
               ))}
             </div>
-            <button className="w-full bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+            <button
+              className="w-full bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+              onClick={() => setStatus('upload-background')}
+              data-testid="pc-upload-bg"
+            >
               Upload Custom Background
             </button>
           </div>
