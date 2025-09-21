@@ -1,34 +1,39 @@
 BrandForge (React + Vite + Tailwind)
 
 Overview
-BrandForge is a React + TypeScript app powered by Vite and Tailwind CSS. It helps you craft product visuals, apply brand styles, and generate social media assets. The Dashboard includes a tile to generate AI social media writeups via a secure backend endpoint you provide.
+BrandForge is a React + TypeScript app powered by Vite and Tailwind CSS. It helps you craft product visuals, apply brand styles, and generate social media assets. The Dashboard includes a tile to generate AI social media writeups via a secure backend endpoint you provide or via Gemini if configured.
 
-Key features
-- Dashboard with recent projects and quick tools
-- Product Craft studio (upload, enhance, backgrounds, properties)
-- Brand Style tools (colors, logo, templates)
-- Social Media Posts (platform presets, canvas preview, captions)
-- AI Social Writeup modal (platform, tone, word limit, brief) – calls your backend
+Features implemented
+- Dashboard with recent projects and quick tools (AI Social Writeup modal)
+- Product Craft studio (upload, enhance, backgrounds, properties, AI edit/filter/adjust/remove-bg)
+- Brand Style tools (colors, logo upload, social/marketing templates)
+- Social Media Posts (platform presets, canvas preview, captions, hashtag helpers, actions)
+- Unit tests for core user interactions (BrandingTools, ProductCraft, SocialMediaPosts)
 
-Tech stack
+Technologies used
 - React 18 + TypeScript
 - Vite 5 (dev server and build)
 - Tailwind CSS 3
 - ESLint 9
+- Vitest + Testing Library (React, JSDOM)
 - Icons: lucide-react
 
-Getting started
+Setup
 Prerequisites
 - Node.js 18+ and npm
 
-Install dependencies
+Environment variables
+- Copy `.env.example` to `.env` and fill in values as needed.
+
+Local development
 ```powershell
 npm install
+npm run dev
 ```
 
-Run in development
+Run tests
 ```powershell
-npm run dev
+npm run test
 ```
 
 Build for production
@@ -60,21 +65,23 @@ brandforge/
 	tailwind.config.js
 	vite.config.ts
 	tsconfig*.json
+	docs/ai-workflows.md      # Evidence of AI workflows used in development
+	reflection.md             # Reflection on AI’s impact
 ```
-
-Available scripts
-- npm run dev – start Vite dev server
-- npm run build – production build
-- npm run preview – preview the built app locally
-- npm run lint – run ESLint
 
 Styling
 - Tailwind CSS utility classes are used throughout. Configuration files: `tailwind.config.js` and `postcss.config.js`.
 
-AI Social Writeup (backend contract)
-The frontend displays an “AI Social Writeup” tile on the Dashboard. Clicking it opens a modal with inputs for platform, word limit, tone, and brief. When you click Generate, the app calls your backend endpoint.
+AI usage (tools and contexts)
+- IDE assistant: GitHub Copilot in VS Code to scaffold components, write tests, and refactor.
+- API-aware prompting: Designed and documented the `/api/social-writeup` spec, then generated a typed client function and prompts for Gemini in `src/services/aiService.ts`.
+- AI image operations: `src/services/imageEditingService.ts` uses Google Gemini via `@google/genai` for edit/filter/adjust/enhance/background removal. All calls require a valid `VITE_GEMINI_API_KEY` and run client-side for demos only. For production, move API calls server-side.
+- AI-powered code review: Used assistant passes to suggest small improvements (types, test IDs, status markers). See `docs/ai-workflows.md` for examples.
 
-Endpoint (you implement)
+AI Social Writeup (backend contract)
+The frontend displays an “AI Social Writeup” tile on the Dashboard. Clicking it opens a modal with inputs for platform, word limit, tone, and brief. When you click Generate, the app calls your backend endpoint or the Gemini helper from `aiService.ts`.
+
+Endpoint (you implement server-side)
 - Method: POST
 - Path: `/api/social-writeup`
 - Request body (JSON):
@@ -103,7 +110,6 @@ app.post('/api/social-writeup', async (req, res) => {
 			return res.status(400).send('Missing required fields');
 		}
 
-		// Build a single provider prompt (you can switch to Gemini if preferred)
 		const prompt = `You are an expert social media copywriter. Write a ${tone} ${platform} caption about: "${brief}". ` +
 			`Strictly keep it under ${wordLimit} words.`;
 
@@ -157,8 +163,14 @@ export default defineConfig({
 ```
 
 Security
-- API keys must never be exposed in client code. Keep provider keys (OpenAI/Gemini) on the server.
+- API keys must never be exposed in client code. Keep provider keys (OpenAI/Gemini) on the server where possible.
+- For demo purposes this project can call Gemini from the browser with `VITE_GEMINI_API_KEY`, but production deployments should proxy via a server to avoid key exposure.
 - Consider rate-limiting and audit logging on your backend.
+
+Version control & commits
+- Keep commits focused and well-labeled (Conventional Commits are recommended).
+- Label AI-assisted changes using a tag in the subject or body, e.g., `[AI-assist]`.
+- See `CONTRIBUTING.md` for examples.
 
 Troubleshooting
 - Browserslist warning: update the db (optional)
